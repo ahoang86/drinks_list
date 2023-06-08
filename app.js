@@ -5,6 +5,8 @@ const SearchBar = ({ onSearch }) => {
   const [searchText, setSearchText] = useState('');
   const [searchBarWidth, setSearchBarWidth] = useState(Dimensions.get('window').width * 0.8);
   const [searchResults, setSearchResults] = useState([]);
+  const [selectedResult, setSelectedResult] = useState(null);
+  const [pairings, setPairings] = useState([]);
 
   const handleSearch = async () => {
     try {
@@ -40,14 +42,29 @@ const SearchBar = ({ onSearch }) => {
     }
   }, [searchText]);
 
-  const handleResultPress = url => {
-    Linking.openURL(url); // Open the URL in a browser or a new tab
+  const handleResultPress = async result => {
+    setSelectedResult(result);
+    Linking.openURL(result.url);
+
+    try {
+      const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${result.code}.json`);
+      const data = await response.json();
+      const extractedPairings = data.product.ingredients_analysis_tags.map(pairing => pairing.replace(/^en:/, ''));
+      setPairings(extractedPairings);
+      setSearchResults([]);
+    } catch (error) {
+      console.error('Error fetching pairings:', error);
+    }
   };
 
   const renderSearchResult = ({ item }) => (
-    <TouchableOpacity onPress={() => handleResultPress(item.url)}>
+    <TouchableOpacity onPress={() => handleResultPress(item)}>
       <Text>{item.product_name}</Text>
     </TouchableOpacity>
+  );
+
+  const renderPairingItem = ({ item }) => (
+    <Text>{item}</Text>
   );
 
   return (
@@ -62,11 +79,27 @@ const SearchBar = ({ onSearch }) => {
         placeholder="Search by name or ingredients"
         onKeyPress={handleKeyPress}
       />
-      <FlatList
-        data={searchResults}
-        renderItem={renderSearchResult}
-        keyExtractor={item => item.code}
-      />
+      {selectedResult ? (
+        <View>
+          <Text>Selected Result: {selectedResult.product_name}</Text>
+          {pairings.length > 0 && (
+            <View>
+              <Text>Pairings:</Text>
+              <FlatList
+                data={pairings}
+                renderItem={renderPairingItem}
+                keyExtractor={(item, index) => index.toString()}
+              />
+            </View>
+          )}
+        </View>
+      ) : (
+        <FlatList
+          data={searchResults}
+          renderItem={renderSearchResult}
+          keyExtractor={item => item.code}
+        />
+      )}
     </View>
   );
 };
