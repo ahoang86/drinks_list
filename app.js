@@ -24,6 +24,14 @@ const SearchBar = ({ onSearch }) => {
     }
   };
 
+  const handleClearSearch = () => {
+    setSearchText('');
+    setSearchResults([]);
+    setSelectedResult(null);
+    setPairings([]);
+    window.location.reload(); // Refresh the page
+  };
+
   useEffect(() => {
     const updateSearchBarWidth = () => {
       setSearchBarWidth(Dimensions.get('window').width * 0.8);
@@ -51,7 +59,6 @@ const SearchBar = ({ onSearch }) => {
       const data = await response.json();
       const extractedPairings = data.product.ingredients_analysis_tags.map(pairing => pairing.replace(/^en:/, ''));
       setPairings(extractedPairings);
-      setSearchResults([]);
     } catch (error) {
       console.error('Error fetching pairings:', error);
     }
@@ -79,7 +86,12 @@ const SearchBar = ({ onSearch }) => {
         placeholder="Search by name or ingredients"
         onKeyPress={handleKeyPress}
       />
-      {selectedResult ? (
+      <FlatList
+        data={searchResults}
+        renderItem={renderSearchResult}
+        keyExtractor={item => item.code}
+      />
+      {selectedResult && (
         <View>
           <Text>Selected Result: {selectedResult.product_name}</Text>
           {pairings.length > 0 && (
@@ -93,13 +105,10 @@ const SearchBar = ({ onSearch }) => {
             </View>
           )}
         </View>
-      ) : (
-        <FlatList
-          data={searchResults}
-          renderItem={renderSearchResult}
-          keyExtractor={item => item.code}
-        />
       )}
+      <TouchableOpacity onPress={handleClearSearch}>
+        <Text>Clear Search</Text>
+      </TouchableOpacity>
     </View>
   );
 };
